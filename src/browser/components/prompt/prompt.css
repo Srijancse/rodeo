@@ -1,0 +1,57 @@
+.prompt {
+  color: #999;
+  display: block;
+  white-space: pre-wrap;
+  overflow: auto;
+  background-color: #fff;
+  font-family: monospace;
+  font-size: 12px;
+  position: relative;
+  outline: none;
+}
+
+.prompt .prompt-line {
+  position: relative;
+}
+
+.prompt--prompt,
+.prompt--continue {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -o-user-select: none;
+  user-select: none;
+}
+
+.prompt__cursor {
+  background-color: #ccc;
+  color: transparent;
+  display: inline;
+  position: absolute;
+  z-index: 0;
+}
+
+.prompt:focus {
+  color: #333;
+  outline: none;
+}
+
+.prompt:focus .prompt__cursor {
+  background-color: #111;
+}
+
+.prompt__cursor--thinBlinking {
+  width: 2px;
+}
+
+.prompt:focus .prompt__cursor--thinBlinking {
+  animation-name: prompt__cursor__animation;
+  animation-duration: 1s;
+  animation-iteration-count: infinite;
+  animation-timing-function: steps(1, start);
+}
+
+@keyframes prompt__cursor__animation {
+  0% { opacity: 1; }
+  50% { opacity: 0; }
+}

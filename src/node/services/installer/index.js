@@ -2,16 +2,17 @@
  * @see https://github.com/atom/atom/blob/32a1d21a0debe14f159b3cbf945827d4fb7bdf30/src/browser/squirrel-update.coffee#L227
  */
 
-'use strict';
+import _ from 'lodash';
+import args from '../args';
+import bluebird from 'bluebird';
+import os from 'os';
+import shortcuts from './shortcuts';
+import commands from './commands';
+import contextMenu from './context-menu';
+import python from '../../kernels/python/client';
 
-const _ = require('lodash'),
-  bluebird = require('bluebird'),
-  os = require('os'),
-  shortcuts = require('./shortcuts'),
-  commands = require('./commands'),
-  contextMenu = require('./context-menu'),
-  log = require('../log').asInternal(__filename),
-  argv = require('../args').getArgv(),
+const log = require('../log').asInternal(__filename),
+  argv = args.getArgv(),
   activeCommands = {
     squirrelInstall: install,
     squirrelUpdate: update,
@@ -24,7 +25,7 @@ const _ = require('lodash'),
 
 function reportError(message) {
   return function (error) {
-    log('error', {message, error});
+    log('error', message, error);
   };
 }
 
@@ -34,6 +35,7 @@ function firstRun(appName, execPath, systemRoot) {
     shortcuts.create(execPath).catch(reportError('failed to create shortcuts')),
     contextMenu.install(execPath, systemRoot).catch(reportError('failed to install context menu')),
     commands.addToPath(appName, execPath, systemRoot).catch(reportError('failed to add to path'))
+    // python.createBuiltinKernelJson().catch(reportError('failed to add built-in kernel.json'))
   ]);
 }
 
@@ -97,4 +99,6 @@ function handleSquirrelStartupEvent() {
   return false;
 }
 
-module.exports.handleSquirrelStartupEvent = handleSquirrelStartupEvent;
+export default {
+  handleSquirrelStartupEvent
+};

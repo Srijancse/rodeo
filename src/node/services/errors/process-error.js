@@ -1,6 +1,4 @@
-'use strict';
-
-const _ = require('lodash');
+import _ from 'lodash';
 
 /**
  * @param {string} message
@@ -18,4 +16,4 @@ function ProcessError(message, properties) {
 ProcessError.prototype = Object.create(Error.prototype);
 ProcessError.prototype.constructor = ProcessError;
 
-module.exports = ProcessError;
+export default ProcessError;

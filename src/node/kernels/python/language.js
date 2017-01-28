@@ -3,11 +3,11 @@
  * @module
  */
 
-'use strict';
+import _ from 'lodash';
+import path from 'path';
+import envService from '../../services/env';
 
-const _ = require('lodash'),
-  fs = require('fs'),
-  os = require('os'),
+const resourcesPath = process.resourcesPath,
   log = require('../../services/log').asInternal(__filename);
 
 /**
@@ -21,42 +21,86 @@ function toPythonArgs(args) {
   }, {});
 }
 
-function addPath(envs, path) {
-  if (!_.includes(envs, path) && fs.existsSync(path)) {
-    envs.push(path);
-  }
+function getCondaPath() {
+  return path.join(resourcesPath, 'conda');
+}
+
+function getPythonPath() {
+  return path.join(resourcesPath, 'conda', 'python.exe');
+}
+
+function getStartKernelPath() {
+  return path.join(resourcesPath, 'kernels', 'python', 'start_kernel.py');
 }
 
 function setDefaultEnvVars(env) {
-  if (process.platform === 'darwin' && _.isString(env.PATH)) {
-    if (_.isString(env.PATH)) {
-      const envs = env.PATH.split(':');
 
-      addPath(envs, '/sbin');
-      addPath(envs, '/usr/sbin');
-      addPath(envs, '/usr/local/bin');
+  log('info', 'setDefaultEnvVars', env);
 
-      env.PATH = envs.join(':');
-    }
+  if (process.platform === 'darwin') {
+    envService.appendToPath(env, '/sbin');
+    envService.appendToPath(env, '/usr/sbin');
+    envService.appendToPath(env, '/usr/local/bin');
   }
 
-  // we support colors
-  if (process.platform !== '32' && env.CLICOLOR === undefined) {
-    env.CLICOLOR = 1;
-  }
-
-  if (process.platform === 'win32' && !env.NUMBER_OF_PROCESSORS) {
-    try {
-      env.NUMBER_OF_PROCESSORS = os.cpus().length;
-    } catch (ex) {
-      log('warn', 'failed to set NUMBER_OF_PROCESSORS', ex);
-    }
-  }
-
-  return _.assign({
-    PYTHONUNBUFFERED: '1'
-  }, env);
+  return setPythonConstants(env);
 }
 
-module.exports.toPythonArgs = toPythonArgs;
-module.exports.setDefaultEnvVars = setDefaultEnvVars;
+function setBuiltinDefaultEnvVars(env) {
+  if (process.resourcesPath) {
+    log('info', 'setBuiltinDefaultEnvVars', env);
+
+    if (!env.PATH && !env.Path) {
+      throw new Error('MISSING PATH in setBuiltinDefaultEnvVars');
+    }
+
+    envService.appendToPath(env, path.join(process.resourcesPath, 'conda'));
+    envService.appendToPath(env, path.join(process.resourcesPath, 'conda', 'bin'));
+    envService.appendToPath(env, path.join(process.resourcesPath, 'conda', 'Lib'));
+    envService.appendToPath(env, path.join(process.resourcesPath, 'conda', 'Lib', 'bin'));
+    envService.appendToPath(env, path.join(process.resourcesPath, 'conda', 'Scripts'));
+    envService.appendToPath(env, path.join(process.resourcesPath, 'conda', 'Scripts', 'bin'));
+
+    envService.appendToPath(env, path.join(process.resourcesPath, 'conda', 'DLLs'), 'pythonPath');
+    envService.appendToPath(env, path.join(process.resourcesPath, 'conda', 'Lib'), 'pythonPath');
+    envService.appendToPath(env, path.join(process.resourcesPath, 'conda', 'Lib', 'site-packages'), 'pythonPath');
+  }
+
+  return env;
+}
+
+function setPythonConstants(env) {
+  if (!env.PYTHONUNBUFFERED) {
+    env.PYTHONUNBUFFERED = '1';
+  }
+
+  if (!env.PYTHONIOENCODING) {
+    env.PYTHONIOENCODING = 'utf-8';
+  }
+
+  return env;
+}
+
+function extendOwnEnv() {
+  if (process.resourcesPath) {
+    envService.appendToPath(process.env, path.join(process.resourcesPath, 'conda'));
+  }
+
+  if (process.platform !== 'win32') {
+    envService.appendToPath(process.env, '/sbin');
+    envService.appendToPath(process.env, '/usr/sbin');
+    envService.appendToPath(process.env, '/usr/local/bin');
+  }
+
+  return setPythonConstants(process.env);
+}
+
+export default {
+  extendOwnEnv,
+  getStartKernelPath,
+  getPythonPath,
+  getCondaPath,
+  setBuiltinDefaultEnvVars,
+  setDefaultEnvVars,
+  toPythonArgs
+};

@@ -1,10 +1,10 @@
-'use strict';
+import _ from 'lodash';
+import bluebird from 'bluebird';
+import fs from 'fs';
+import processes from './processes';
+import {getPath, setPath} from '../../shared/env';
 
-const _ = require('lodash'),
-  bluebird = require('bluebird'),
-  log = require('./log').asInternal(__filename),
-  processes = require('./processes'),
-  win32System = require('./win32/system');
+const log = require('./log').asInternal(__filename);
 
 /**
  * @returns {Promise}
@@ -45,8 +45,6 @@ function getPlatformEnv() {
 
     if (platform === 'darwin' || platform === 'linux') {
       promise = getBashEnv();
-    } else if (platform === 'win32') {
-      promise = win32System.getEnv(process.env.SystemRoot);
     } else {
       promise = bluebird.resolve({});
     }
@@ -65,11 +63,47 @@ function getPlatformEnv() {
  */
 function getEnv() {
   return getPlatformEnv()
-    .then(extraEnv => _.defaults(extraEnv, process.env))
-    .catch(error => {
-      log('error', 'getEnv', error);
-      return process.env;
+    .then(extraEnv => _.defaults(extraEnv, _.clone(process.env)))
+    .then(env => {
+      log('info', 'Got Environment Variables', env);
+      return env;
     });
 }
 
-module.exports.getEnv = getEnv;
+/**
+ * NOTE: Verifies that the file path actually exists
+ * @param {object} env
+ * @param {string} filePath
+ * @param {string} [variableName='path']
+ */
+function appendToPath(env, filePath, variableName) {
+  variableName = variableName || 'path';
+  const list = getPath(env, variableName);
+
+  if (!_.includes(list, filePath) && fs.existsSync(filePath)) {
+    list.push(filePath);
+    setPath(env, list, variableName);
+  }
+}
+
+/**
+ * NOTE: Verifies that the file path actually exists
+ * @param {object} env
+ * @param {string} filePath
+ * @param {string} [variableName='path']
+ */
+function prependToPath(env, filePath, variableName) {
+  variableName = variableName || 'path';
+  const list = getPath(env, variableName);
+
+  if (!_.includes(list, filePath) && fs.existsSync(filePath)) {
+    list.unshift(filePath);
+    setPath(env, list, variableName);
+  }
+}
+
+export default {
+  appendToPath,
+  getEnv,
+  prependToPath
+};
